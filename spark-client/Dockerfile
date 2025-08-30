@@ -1,4 +1,5 @@
-FROM standalone-spark_spark-master:latest
+FROM azercell_docker_project3_spark-master:latest
+
 
 # Install MinIO Client
 RUN curl -o mc https://dl.min.io/client/mc/release/linux-amd64/mc && chmod +x mc && mv mc /usr/local/bin/

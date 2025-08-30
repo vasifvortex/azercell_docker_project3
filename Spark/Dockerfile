@@ -4,7 +4,6 @@ FROM python:3.10-slim
 RUN apt-get update && \
     mkdir -p /usr/share/man/man1 && \
     apt-get install -y --no-install-recommends \
-    openjdk-17-jdk \
     libzbar-dev \
     bash \
     gcc \
@@ -28,6 +27,14 @@ RUN apt-get update && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# Download and install OpenJDK 17 (new link)
+RUN curl -L -o openjdk-17.tar.gz https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.16%2B8/OpenJDK17U-jdk_x64_linux_hotspot_17.0.16_8.tar.gz\
+    && mkdir -p /usr/local/java \
+    && tar -xzf openjdk-17.tar.gz -C /usr/local/java --strip-components=1 \
+    && rm openjdk-17.tar.gz
+# Fix for Spark expecting java here
+RUN mkdir -p /usr/lib/jvm && ln -s /usr/local/java /usr/lib/jvm/java-17-openjdk-amd64
 
 # Set environment variables
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
@@ -56,4 +63,3 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 ADD spark-master.sh spark-worker.sh /
 COPY delta-core_2.12-2.4.0.jar /opt/spark/jars
-
