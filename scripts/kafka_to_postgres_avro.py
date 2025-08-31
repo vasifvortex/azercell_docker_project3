@@ -16,7 +16,7 @@ def get_latest_avro_schema(subject, registry_url):
 # -------------------------------
 # Schema Registry configuration
 # -------------------------------
-schema_registry_url = "http://schema-registry:8081"  # Replace with actual registry
+schema_registry_url = "http://localhost:8083"  # Replace with actual registry
 topic_name = "test_topic"
 subject_name = f"{topic_name}-value"
 
@@ -28,12 +28,13 @@ avro_schema = get_latest_avro_schema(subject_name, schema_registry_url)
 # -------------------------------
 spark = SparkSession.builder \
     .appName("KafkaAvroToPostgres") \
-    .master("spark://spark-master:7077") \
+    .master("spark://172.20.0.5:7077") \
     .config("spark.jars.repositories", "https://packages.confluent.io/maven/") \
     .config("spark.jars.packages", ",".join([
         "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0",
         "org.apache.spark:spark-avro_2.12:3.5.0",
-        "org.postgresql:postgresql:42.6.0"
+        "org.postgresql:postgresql:42.6.0",
+        "org.scala-lang:scala-library:2.12.18"  # Added Scala library explicitly
     ])) \
     .getOrCreate()
 
@@ -81,3 +82,4 @@ query = df_parsed.writeStream \
     .start()
 
 query.awaitTermination()
+
