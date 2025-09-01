@@ -2,12 +2,6 @@ version: "3.8"
 
 networks:
   spark-net:
-    external: true
-  kafka-net:
-    ipam:
-      config:
-        - subnet: 172.21.0.0/16
-  db-net:
     driver: bridge
 
 volumes:
@@ -33,11 +27,9 @@ services:
       - "4040:4040"
       - "7077:7077"
       - "18080:18080"
-      - "8085:8080"    # updated host port
+      - "8085:8080"
     networks:
       - spark-net
-      - kafka-net
-      - db-net
     command: sh spark-master.sh
 
   spark-worker:
@@ -51,11 +43,9 @@ services:
     depends_on:
       - spark-master
     ports:
-      - "8086-8089:8081-8084"   # updated host ports
+      - "8086-8089:8081-8084"
     networks:
       - spark-net
-      - kafka-net
-      - db-net
     command: sh spark-worker.sh
 
   spark-client:
@@ -72,8 +62,6 @@ services:
       - "4041:4040"
     networks:
       - spark-net
-      - kafka-net
-      - db-net
     volumes:
       - ./spark_client/examples:/opt/examples
 
@@ -114,8 +102,7 @@ services:
       - "9192:9192"
       - "9094:9092"
     networks:
-      kafka-net:
-        ipv4_address: 172.21.0.11
+      - spark-net
     volumes:
       - ./config/kafka1/server.properties:/kafka/config/server.properties
       - ./data/kafka1/:/data/kafka/
@@ -129,8 +116,7 @@ services:
       - "9193:9192"
       - "9095:9092"
     networks:
-      kafka-net:
-        ipv4_address: 172.21.0.12
+      - spark-net
     volumes:
       - ./config/kafka2/server.properties:/kafka/config/server.properties
       - ./data/kafka2/:/data/kafka/
@@ -144,8 +130,7 @@ services:
       - "9194:9192"
       - "9096:9092"
     networks:
-      kafka-net:
-        ipv4_address: 172.21.0.13
+      - spark-net
     volumes:
       - ./config/kafka3/server.properties:/kafka/config/server.properties
       - ./data/kafka3/:/data/kafka/
@@ -154,12 +139,12 @@ services:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
     ports:
-      - "8082:8080"   # updated host port
+      - "8082:8080"
     environment:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:9092
     networks:
-      - kafka-net
+      - spark-net
 
   schema-registry:
     image: confluentinc/cp-schema-registry:7.5.0
@@ -167,9 +152,9 @@ services:
     depends_on:
       - kafka1
     ports:
-      - "8083:8081"   # updated host port
+      - "8083:8081"
     networks:
-      - kafka-net
+      - spark-net
     environment:
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka1:9092
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
@@ -191,6 +176,4 @@ services:
     ports:
       - "5432:5432"
     networks:
-      - db-net
       - spark-net
-

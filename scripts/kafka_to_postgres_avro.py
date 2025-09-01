@@ -28,7 +28,7 @@ avro_schema = get_latest_avro_schema(subject_name, schema_registry_url)
 # -------------------------------
 spark = SparkSession.builder \
     .appName("KafkaAvroToPostgres") \
-    .master("spark://172.20.0.5:7077") \
+    .master("spark://spark-master:7077") \
     .config("spark.jars.repositories", "https://packages.confluent.io/maven/") \
     .config("spark.jars.packages", ",".join([
         "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0",
