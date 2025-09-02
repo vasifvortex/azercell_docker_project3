@@ -16,9 +16,9 @@ def get_latest_avro_schema(subject, registry_url):
 # -------------------------------
 # Schema Registry configuration
 # -------------------------------
-schema_registry_url = "http://localhost:8083"  # Replace with actual registry
-topic_name = "test_topic"
-subject_name = f"{topic_name}-value"
+schema_registry_url = "http://localhost:8081"  
+subject_name = "test_topic-value"             
+
 
 # Get Avro schema
 avro_schema = get_latest_avro_schema(subject_name, schema_registry_url)
@@ -27,15 +27,19 @@ avro_schema = get_latest_avro_schema(subject_name, schema_registry_url)
 # Spark session
 # -------------------------------
 spark = SparkSession.builder \
-    .appName("KafkaAvroToPostgres") \
+    .appName("ProcessingTask") \
     .master("spark://spark-master:7077") \
     .config("spark.jars.repositories", "https://packages.confluent.io/maven/") \
     .config("spark.jars.packages", ",".join([
-        "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0",
-        "org.apache.spark:spark-avro_2.12:3.5.0",
-        "org.postgresql:postgresql:42.6.0",
-        "org.scala-lang:scala-library:2.12.18"  # Added Scala library explicitly
-    ])) \
+    "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0",
+    "org.apache.spark:spark-avro_2.12:3.5.0",
+    "org.postgresql:postgresql:42.7.0"
+     ])) \
+    .config("spark.hadoop.fs.s3a.access.key", "telcoaz") \
+    .config("spark.hadoop.fs.s3a.secret.key", "Telco12345") \
+    .config("spark.hadoop.fs.s3a.endpoint", "http://minio:9000") \
+    .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
+    .config("spark.hadoop.fs.s3a.path.style.access", "true") \
     .getOrCreate()
 
 spark.sparkContext.setLogLevel("WARN")
@@ -45,8 +49,8 @@ spark.sparkContext.setLogLevel("WARN")
 # -------------------------------
 df_raw = spark.readStream \
     .format("kafka") \
-    .option("kafka.bootstrap.servers", "kafka1:9092,kafka2:9092,kafka3:9092") \
-    .option("subscribe", topic_name) \
+    .option("kafka.bootstrap.servers", "localhost:9094,localhost:9095,localhost:9096") \
+    .option("subscribe", "test_topic") \
     .option("startingOffsets", "earliest") \
     .load()
 

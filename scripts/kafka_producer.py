@@ -4,14 +4,6 @@ from confluent_kafka.avro import AvroProducer
 import json
 
 # -----------------------------
-# Kafka + Schema Registry config
-# -----------------------------
-producer_config = {
-    'bootstrap.servers': 'localhost:9094,localhost:9095,localhost:9096',  # Mapped Kafka ports
-    'schema.registry.url': 'http://localhost:8083'                         # Mapped Schema Registry port
-}
-
-# -----------------------------
 # Define Avro schema
 # -----------------------------
 value_schema_str = """
@@ -25,6 +17,15 @@ value_schema_str = """
 }
 """
 value_schema = avro.loads(value_schema_str)
+
+
+# -----------------------------
+# Kafka + Schema Registry config
+# -----------------------------
+producer_config = {
+    'bootstrap.servers': 'localhost:9094,localhost:9095,localhost:9096',  
+    'schema.registry.url': 'http://localhost:8081'                         
+}
 
 # -----------------------------
 # Create AvroProducer

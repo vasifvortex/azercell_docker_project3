@@ -1,98 +1,7 @@
-version: "3.8"
-
-networks:
-  spark-net:
-    driver: bridge
-
-volumes:
-  minio:
-    driver: local
-  pgdata:
-    driver: local
+version: '3.8'
 
 services:
-  ################
-  # Spark + MinIO
-  ################
-  spark-master:
-    container_name: spark-master
-    build:
-      context: ./Spark
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: "2g"
-    ports:
-      - "4040:4040"
-      - "7077:7077"
-      - "18080:18080"
-      - "8085:8080"
-    networks:
-      - spark-net
-    command: sh spark-master.sh
-
-  spark-worker:
-    build:
-      context: ./Spark
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: "2g"
-    depends_on:
-      - spark-master
-    ports:
-      - "8086-8089:8081-8084"
-    networks:
-      - spark-net
-    command: sh spark-worker.sh
-
-  spark-client:
-    container_name: spark-client
-    build:
-      context: ./spark-client
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: "2g"
-    ports:
-      - "8888:8888"
-      - "4041:4040"
-    networks:
-      - spark-net
-    volumes:
-      - ./spark_client/examples:/opt/examples
-
-  minio:
-    container_name: minio
-    image: "minio/minio:RELEASE.2023-05-04T21-44-30Z"
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: "2g"
-    volumes:
-      - minio:/data
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    networks:
-      - spark-net
-    environment:
-      MINIO_ACCESS_KEY: "telcoaz"
-      MINIO_SECRET_KEY: "Telco12345"
-    command: server /data --console-address ":9001"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-
-  #########################
-  # Kafka + Schema Registry
-  #########################
+  # Kafka Services
   kafka1:
     container_name: kafka1
     image: telco_kafka:latest
@@ -102,7 +11,8 @@ services:
       - "9192:9192"
       - "9094:9092"
     networks:
-      - spark-net
+      shared-net:
+        ipv4_address: 172.20.0.11
     volumes:
       - ./config/kafka1/server.properties:/kafka/config/server.properties
       - ./data/kafka1/:/data/kafka/
@@ -116,7 +26,8 @@ services:
       - "9193:9192"
       - "9095:9092"
     networks:
-      - spark-net
+      shared-net:
+        ipv4_address: 172.20.0.12
     volumes:
       - ./config/kafka2/server.properties:/kafka/config/server.properties
       - ./data/kafka2/:/data/kafka/
@@ -130,21 +41,11 @@ services:
       - "9194:9192"
       - "9096:9092"
     networks:
-      - spark-net
+      shared-net:
+        ipv4_address: 172.20.0.13
     volumes:
       - ./config/kafka3/server.properties:/kafka/config/server.properties
       - ./data/kafka3/:/data/kafka/
-
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
-    ports:
-      - "8082:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:9092
-    networks:
-      - spark-net
 
   schema-registry:
     image: confluentinc/cp-schema-registry:7.5.0
@@ -152,28 +53,142 @@ services:
     depends_on:
       - kafka1
     ports:
-      - "8083:8081"
+      - "8081:8081"
     networks:
-      - spark-net
+      shared-net:
+        ipv4_address: 172.20.0.14
     environment:
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka1:9092
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka1:9192
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
 
-  #########################
-  # PostgreSQL
-  #########################
-  postgres:
-    image: postgres:15
-    container_name: postgres
-    restart: always
+  akhq:
+    image: tchiotludo/akhq:latest
+    container_name: akhq
     environment:
-      POSTGRES_USER: telco
-      POSTGRES_PASSWORD: Telco12345
-      POSTGRES_DB: telco_db
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            my-cluster:
+              properties:
+                bootstrap.servers: PLAINTEXT://kafka1:9192
+              schema-registry:
+                url: "http://schema-registry:8081"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka1
+    networks:
+      shared-net:
+        ipv4_address: 172.20.0.15
+
+  # Spark Services
+  spark-master:
+    container_name: spark-master
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: "2g"
+    build:
+      context: ./Spark
+    ports:
+      - "4040:4040"
+      - "7077:7077"
+      - "9090:8080"
+      - "18080:18080"
+    networks:
+      shared-net:
+        ipv4_address: 172.20.0.21
+    command: sh spark-master.sh
+
+  spark-worker:
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: "2g"
+    build:
+      context: ./Spark
+    depends_on:
+      - spark-master
+    ports:
+      - "9091-9099:8081"
+    networks:
+      shared-net:
+        ipv4_address: 172.20.0.22
+    command: sh spark-worker.sh
+
+  spark-client:
+    container_name: spark-client
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: "2g"
+    build:
+      context: ./spark-client
+    depends_on:
+      - spark-master
+    ports:
+      - "8888:8888"
+      - "4041:4040"
+    networks:
+      shared-net:
+        ipv4_address: 172.20.0.23
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - ./spark_client/examples:/opt/examples
+
+  # Storage Services
+  minio:
+    container_name: minio
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: "2g"
+    image: "minio/minio:RELEASE.2023-05-04T21-44-30Z"
+    volumes:
+      - minio:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      shared-net:
+        ipv4_address: 172.20.0.31
+    environment:
+      MINIO_ACCESS_KEY: "telcoaz"
+      MINIO_SECRET_KEY: "Telco12345"
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  postgres:
+    container_name: postgres
+    image: postgres:15
+    environment:
+      POSTGRES_DB: mydb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mypassword
     ports:
       - "5432:5432"
     networks:
-      - spark-net
+      shared-net:
+        ipv4_address: 172.20.0.32
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  minio:
+    driver: local
+  postgres_data:
+    driver: local
+
+networks:
+  shared-net:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
