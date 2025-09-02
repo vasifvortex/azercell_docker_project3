@@ -112,6 +112,7 @@ services:
       context: ./Spark
     depends_on:
       - spark-master
+      - postgres
     ports:
       - "9091-9099:8081"
     networks:
@@ -138,6 +139,7 @@ services:
         ipv4_address: 172.20.0.23
     volumes:
       - ./spark_client/examples:/opt/examples
+      - ./drivers/postgresql-42.6.0.jar:/opt/spark/jars/postgresql-42.6.0.jar
 
   # Storage Services
   minio:
@@ -170,9 +172,9 @@ services:
     container_name: postgres
     image: postgres:15
     environment:
-      POSTGRES_DB: mydb
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: telco_db
+      POSTGRES_USER: telco
+      POSTGRES_PASSWORD: Telco12345
     ports:
       - "5432:5432"
     networks:
